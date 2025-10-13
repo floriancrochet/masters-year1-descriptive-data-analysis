@@ -1,0 +1,921 @@
+---
+title: "Rapport analyse descriptive"
+author: "Pierre et Florian"
+format:
+  html:
+    toc: true
+    toc-title: Sommaire
+    code-fold: true
+    echo: true
+    eval: true
+    incremental: true
+  pdf:
+    toc: true
+    toc-title: Sommaire
+    code-fold: true
+    echo: true
+    eval: true
+    incremental: true
+  revealjs:
+    incremental: true
+---
+
+```{r}
+# Chargement des bibliothèques nécessaires
+
+library(openxlsx)
+library(tidyverse)
+library(gridExtra)
+library(outliers)
+library(corrplot)
+library(PerformanceAnalytics)
+library(sjPlot)
+library(FactoMineR)
+library(factoextra)
+library(reshape2)
+
+library(car)
+library(MASS)
+library(EnvStats)
+library(stats)
+library(lmtest)
+library(leaps)
+library(AER)
+
+```
+
+
+# I. Analyse de la base de données : analyse descriptive
+
+## A. Visualisation globale des données
+
+Importation de la base sous R sous le nom base, sauvegarde sous base.rda
+
+```{r}
+base <- read.xlsx("data/base.xlsx",
+                  startRow = 2,
+                  colNames = TRUE,
+                  rowNames = TRUE)
+
+save(base, file = "base.rda")
+
+View(base)
+```
+
+
+Vérification de la nature des variables et modifications
+
+```{r}
+str(base)
+```
+
+```{r}
+fact <- c(12,13,14)
+num <- c(1,2,3,4,5,6,7,8,9,10,11)
+
+base[,fact]=lapply(base[,fact],as.factor)
+base[,num]=lapply(base[,num],as.numeric)
+
+str(base)
+```
+
+```{r}
+save(base, file="base.rda")
+```
+
+
+Statistiques selon la nature des variables
+
+Statistiques descriptives
+
+```{r}
+summary(base)
+```
+
+
+
+## B. Analyse univariée
+
+
+### 1. Variables quantitatives
+
+```{r}
+quantis <- c("revenu", "population", "chomage", "pib", "esperance", "natalite", "mortalite", "education", "voiture", "social", "surface")
+```
+
+#### a. Représentation
+
+##### Statistiques
+
+```{r}
+# Fonction pour calculer les statistiques descriptives
+fonction <- function(quantis) {
+  data <- base[[quantis]]
+  c(
+    Min = min(data, na.rm = TRUE),
+    `1Q` = quantile(data, 0.25, na.rm = TRUE),
+    Médiane = median(data, na.rm = TRUE),
+    Moyenne = mean(data, na.rm = TRUE),
+    `3Q` = quantile(data, 0.75, na.rm = TRUE),
+    Max = max(data, na.rm = TRUE),
+    Sd = sd(data, na.rm = TRUE)
+  )
+}
+
+# Statistiques pour chaque variable
+stats <- sapply(quantis, fonction)
+
+# Conversion en DataFrame
+stats_df <- as.data.frame(stats)
+
+stats_df
+```
+
+
+##### Graphiques représentant la distribution des données
+
+```{r}
+# Histogrammes
+histogrammes <- lapply(quantis, function(i) {
+  ggplot(base) +
+    aes(x = .data[[i]]) +
+    geom_histogram(color = "black", fill = "skyblue") +
+    labs(title = i, x = i, y = "Fréquence") +
+    theme_classic() +
+    theme(plot.title = element_text(hjust = 0.5))
+})
+
+# Afficher les graphiques en 2x2
+grid.arrange(grobs = histogrammes[1:4], ncol = 2)
+
+# Afficher les graphiques 2 par 2
+for (i in seq(1, length(histogrammes), by = 4)) {
+  grid.arrange(grobs = histogrammes[i:min(i+3, length(histogrammes))],
+               ncol = 2)
+}
+```
+
+
+#### b. Vérification de l’atypicité de chaque variable quantitatives
+
+```{r}
+# Créer une liste de graphiques
+boxplots <- lapply(quantis, function(i) {
+  ggplot(base) +
+    aes(y = .data[[i]]) +
+    geom_boxplot(color = "black", fill = "red") +
+    labs(title = paste("Boxplot de", i), x = "", y = i ) +
+    theme_classic() +
+    theme(plot.title = element_text(hjust = 0.5))
+})
+
+boxplots
+
+# Afficher tous les boxplots sur un même graphique
+grid.arrange(grobs = boxplots, ncol = 4)
+
+# Afficher les graphiques 2 par 2
+#for (i in seq(1, length(boxplots), by = 4)) {
+#  grid.arrange(grobs = boxplots[i:min(i+3, length(boxplots))],
+#               ncol = 2)
+#}
+```
+
+Nous n'observons aucune valeur potentiellement atypique.
+
+```{r}
+# Boucle pour appliquer le test de Rosner sur chaque variable
+for (i in seq(1, length(quantis))) {
+  res <- rosnerTest((base[[quantis[i]]]), k = 10, alpha = 0.05)
+  cat(quantis[i])
+  print(res)
+}
+```
+
+Le test de Rosner confirme l'absence de valeur atypique.
+
+
+### 2. Variables qualitatives
+
+```{r}
+qualis <- c("littoral", "rurale", "metropole")
+```
+
+```{r}
+tables <- lapply(qualis, function(var) {
+                   table(base[[var]])
+                 })
+
+names(tables) <- qualis
+
+tables
+```
+
+```{r}
+summary(base[,12:14])
+```
+
+
+
+## C. Analyse bivariée
+
+
+### 1. Deux variables quantitatives
+
+
+#### Vérification de la corrélation (variables explicatives quantitatives)
+
+```{r}
+# distribution normale des variable
+for (i in seq(1, length(quantis))) {
+  res <- shapiro.test(base[[quantis[i]]])
+  cat(quantis[i])
+  print(res)
+}
+```
+
+La p-value de chaque variable est inférieure à 0,05, ce qui révèle qu'aucune variable ne suit une loi normale.
+
+La corrélation de Spearman étant robuste, c'est à dire indépendante de la distribution des données, il faut calculer le coefficient de corrélation de Spearman.
+
+```{r}
+cor(base[,quantis], 
+    use="complete.obs",method = c("spearman"))
+```
+
+Chaque coefficient est bien inférieur à la valeur absolue de 0,6.
+Il ne semble pas y avoir de corrélation entre ces variables explicatives.
+
+
+**Autres méthodes possibles** :
+
+```{r}
+chart.Correlation(base[,quantis], histogram=TRUE, pch=19, method = c("spearman"))
+```
+
+```{r}
+corr_mat=cor(base[,quantis], method="s")
+
+corrplot(corr_mat, method='number', type="upper")
+```
+
+```{r}
+corrplot(corr_mat, type="upper")
+```
+
+
+### 2. Deux variables qualitatives
+
+- Tableau de contingence
+
+```{r}
+for (i in qualis) {
+  for (j in qualis) {
+    if (i != j) {
+      res <- base |>
+        count(.data[[i]], .data[[j]])
+      print(res)
+    }
+  }
+}
+```
+
+
+- Cartes des points chauds
+
+```{r}
+for (i in qualis) {
+  for (j in qualis) {
+    if (i != j) {
+      res <- base |> 
+        count(.data[[i]], .data[[j]]) |> 
+        ggplot() +
+        aes(x = .data[[i]], y = .data[[j]], fill = n) +
+        geom_tile() +
+        theme_bw()
+      
+      print(res)
+    }
+  }
+}
+```
+
+
+- Test du Khi-deux
+
+```{r}
+for (i in 1:2) {
+  for (j in (i + 1):3) {
+    # tableau croisé
+    tab <- table(base[[qualis[i]]], base[[qualis[j]]])
+    
+    # test du Khi-deux
+    res <- chisq.test(tab)
+    
+    print(paste("Test du Khi-deux entre", qualis[i], "et", qualis[j]))
+    print(res)
+  }
+}
+```
+
+1. Test entre littoral et rurale :
+
+La p-value est inférieure à 0.05, ce qui indique que la différence entre les modalités littoral et rurale est statistiquement significative.
+Il y a une association significative entre les deux variables, ce qui suggère que les distributions des valeurs dans littoral et rurale ne sont pas indépendantes.
+
+2. Test entre littoral et metropole :
+
+La p-value est supérieure à 0.05, ce qui signifie que la différence entre les modalités littoral et metropole n'est pas statistiquement significative.
+Il n'y a pas d'association significative entre littoral et metropole, ce qui suggère que les distributions des valeurs dans ces deux variables sont indépendantes.
+
+3. Test entre rurale et metropole :
+
+La p-value est inférieure à 0.05, ce qui indique que la différence entre les modalités rurale et metropole est statistiquement significative.
+Il existe une association significative entre rurale et metropole, ce qui suggère que les distributions des valeurs dans ces deux variables ne sont pas indépendantes.
+
+
+- matrice d'indépendance des variables qualitatives
+
+```{r}
+ST_quali = as.data.frame(base[,qualis])
+sjp.chi2(ST_quali, show.legend = TRUE)
+```
+
+
+
+### 3. Une variable quantitative et une qualitative
+
+#### Test de comparaison de moyennes
+
+Nous vérifions tout d'abord la normalité des variables quantitatives pour chaque modalité des variables qualitatives.
+```{r}
+# Analyse de la normalité des variables quantitatives pour chaque modalité des variables qualitatives
+walk(qualis, function(qual) { # Pour chaque variable qualitative
+
+  walk(quantis, function(quant) { # Pour chaque variable quantitative
+
+    # Test de normalité pour chaque modalité
+    normalite <- unique(base[[qual]]) |> # Extraction des modalités uniques de la variable qualitative actuelle
+      map(~ shapiro.test(
+        # Pour chaque modalité `.x` :
+        base |> 
+          filter(base[[qual]] == .x) |> # Base filtrée pour ne garder que les observations correspondant à la modalité `.x`
+          pull(quant) # Extraction de la colonne de la variable quantitative actuelle
+      ))
+      # Test de Shapiro-Wilk sur les données quantitatives extraites
+
+    # Nom des variables
+    cat("Variable qualitative :", qual, "\n")
+    cat("Variable quantitative :", quant, "\n")
+
+    # Affichage des résultats détaillés pour chaque modalité
+    walk2(
+      unique(base[[qual]]),  # Liste des modalités uniques
+      normalite,             # Résultats des tests de normalité
+      function(modalite, test) { # Pour chaque modalité et leur résultat
+        cat("  Modalité :", modalite, "\n") # Nom de la modalité
+        print(test) # Affichage du test de Shapiro-Wilk pour cette modalité
+      }
+    )
+    # Séparation des résultats entre chaque paire de variables
+    cat("\n")
+  })
+})
+```
+
+Les p-values indiquent généralement que les données ne suivent pas une distribution normale (p-value inférieure à 0.05 ou 0.10), en particulier pour les modalités de certaines variables. L'hypothèse de normalité est rejetée au seuil de 5 % et même à 10 % pour les données de plusieurs modalités.
+
+Ainsi, la distribution normale de la variable quantitative n'est pas vérifiée pour chaque modalité.
+
+Par conséquent, les tests de Student et la méthode ANOVA, qui reposent sur l’hypothèse de normalité, ne peuvent pas être appliqués à toutes les associations entre une variable quantitative et une variable qualitative.
+
+Il est donc préférable d'utiliser le test non paramétrique de Wilcoxon-Mann-Whitney pour comparer les distributions des modalités des variables qualitatives en fonction de chaque variable quantitative.
+
+```{r}
+# Analyse des variables quantitatives pour chaque modalité des variables qualitatives
+walk(qualis, function(qual) {  # Pour chaque variable qualitative
+
+  walk(quantis, function(quant) {  # Pour chaque variable quantitative
+
+    # Nom des variables
+    cat("Variable qualitative :", qual, "\n")
+    cat("Variable quantitative :", quant, "\n")
+    
+    # Extraction des deux modalités de la variable qualitative
+    modalites <- unique(base[[qual]])  
+
+      # Test de Wilcoxon-Mann-Whitney entre les deux modalités
+      comparaison <- wilcox.test(
+        base |> filter(base[[qual]] == modalites[1]) |> pull(quant),
+        base |> filter(base[[qual]] == modalites[2]) |> pull(quant)
+      )
+      
+      # Affichage des résultats
+      cat("Test de Wilcoxon-Mann-Whitney entre les modalités :", paste(modalites, collapse = " et "), "\n")
+      print(comparaison)
+
+    # Séparation des résultats entre chaque paire de variables
+    cat("\n")
+  })
+})
+
+```
+
+Concernant la variable littoral, aucun test ne révèle de différence significative entre les modalités 0 et 1, quelle que soit la variable quantitative, sauf pour la variable mortalité (p = 0.03935).
+Pour la variable rurale, les tests ne montrent pas de différence significative entre les modalités 0 et 1 pour toutes les variables quantitatives, à l'exception de mortalité (p = 0.006175).
+Quant à la variable metropole, plusieurs tests indiquent une différence significative, notamment pour population (p = 0.01101), social (p = 0.01281), et surface (p = 0.001559).
+Bien que certains groupes présentent des différences statistiquement significatives au seuil de 5 %, la majorité des modalités associées aux variables quantitatives ne montrent pas de différences significatives.
+
+
+#### Représentation
+
+```{r}
+qualis <- c("rurale", "littoral", "metropole")
+
+for (var in qualis) {
+
+  p <- base |>
+    ggplot() +
+    aes_string(x = "revenu", y = var, color = var) +
+    geom_violin() +
+    geom_boxplot(width = 0.3, alpha = 0.5) +
+    geom_jitter(alpha = 0.3) +
+    theme_minimal() +
+    labs(title = paste("Distribution de la variable 'revenu' en fonction de", var),
+         x = "revenu moyen annuel")
+  
+  print(p)
+}
+```
+
+
+
+
+
+# II. Analyse en composantes principales
+
+## 1. Valeurs propres et nombre d’axes
+
+```{r}
+# ACP
+ACP1 <- PCA(base[,quantis])
+```
+
+```{r}
+# Résultats de l'ACP
+names(ACP1)
+ACP1$eig
+```
+
+```{r}
+fviz_screeplot(ACP1, addlabels = TRUE)
+```
+
+
+## 2. Contribution, corrélations, cosinus carrés 
+
+```{r}
+# Contributions, corrélations et cosinus carrés des variables
+contributions <- ACP1$var$contrib
+contributions
+
+correlations <- ACP1$var$cor
+correlations
+
+cosinus2 <- ACP1$var$cos2
+cosinus2
+```
+
+```{r}
+# Matrice des contibutions
+
+# Convertir le tableau de données en format long pour utiliser ggplot
+contributions_long <- melt(contributions)
+
+# Afficher la matrice avec ggplot2
+ggplot(contributions_long, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile() +  # Créer des tuiles pour chaque cellule
+  geom_text(aes(label = round(value, 2)), size = 4) +  # Ajouter les chiffres à l'intérieur des tuiles
+  scale_fill_gradient(low = "white", high = "deepskyblue") +    # Palette de couleurs
+  theme_minimal() +                                     # Style minimal
+  labs(title = "Contributions des variables aux composantes principales",
+       x = "Dimensions", y = "Variables") +              # Titres des axes
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) # Rotation des titres des dimensions
+```
+
+```{r}
+# Matrice des corrélations
+
+# Convertir le tableau de données en format long pour utiliser ggplot
+correlations_long <- melt(correlations)
+
+# Afficher la matrice avec ggplot2
+ggplot(correlations_long, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile() +  # Créer des tuiles pour chaque cellule
+  geom_text(aes(label = round(value, 2)), size = 4) +  # Ajouter les chiffres à l'intérieur des tuiles
+  scale_fill_gradient(low = "white", high = "deepskyblue") +    # Palette de couleurs
+  theme_minimal() +                                     # Style minimal
+  labs(title = "Corrélations des variables avec les composantes principales",
+       x = "Dimensions", y = "Variables") +              # Titres des axes
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) # Rotation des titres des dimensions
+```
+
+```{r}
+# Matrice des cosinus carrés
+
+# Convertir le tableau de données en format long pour utiliser ggplot
+cosinus2_long <- melt(cosinus2)
+
+# Afficher la matrice avec ggplot2
+ggplot(cosinus2_long, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile() +  # Créer des tuiles pour chaque cellule
+  geom_text(aes(label = round(value, 2)), size = 4) +  # Ajouter les chiffres à l'intérieur des tuiles
+  scale_fill_gradient(low = "white", high = "deepskyblue") +    # Palette de couleurs
+  theme_minimal() +                                     # Style minimal
+  labs(title = "Cosinus carrés des variables sur les composantes principales",
+       x = "Dimensions", y = "Variables") +              # Titres des axes
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) # Rotation des titres des dimensions
+```
+
+
+## 3. Cercle de corrélation
+
+```{r}
+# ACP
+ACP1 <- PCA(base[,quantis],
+            scale.unit = TRUE,
+            graph = FALSE)
+
+# Cercle de corrélation 1
+fviz_pca_var(ACP1,
+             axes = c(1, 2),
+             col.var = "cos2",
+             gradient.cols = c("skyblue", "red"),
+             repel = TRUE,
+             title =  "Cercle de corrélation 1 : ACP sur les axes 1 et 2")
+
+# Cercle de corrélation 2
+fviz_pca_var(ACP1,
+             axes = c(1, 3),
+             col.var = "cos2",
+             gradient.cols = c("skyblue", "red"),
+             repel = TRUE,
+             title =  "Cercle de corrélation 2 : ACP sur les axes 1 et 3")
+
+# Cercle de corrélation 3
+fviz_pca_var(ACP1,
+             axes = c(1, 4),
+             col.var = "cos2",
+             gradient.cols = c("skyblue", "red"),
+             repel = TRUE,
+             title =  "Cercle de corrélation 3 : ACP sur les axes 1 et 4")
+
+# Cercle de corrélation 4
+fviz_pca_var(ACP1,
+             axes = c(2, 3),
+             col.var = "cos2",
+             gradient.cols = c("skyblue", "red"),
+             repel = TRUE,
+             title =  "Cercle de corrélation 4 : ACP sur les axes 2 et 3")
+
+# Cercle de corrélation 5
+fviz_pca_var(ACP1,
+             axes = c(2, 4),
+             col.var = "cos2",
+             gradient.cols = c("skyblue", "red"),
+             repel = TRUE,
+             title =  "Cercle de corrélation 5 : ACP sur les axes 2 et 4")
+
+# Cercle de corrélation 6
+fviz_pca_var(ACP1,
+             axes = c(3, 4),
+             col.var = "cos2",
+             gradient.cols = c("skyblue", "red"),
+             repel = TRUE,
+             title =  "Cercle de corrélation 6 : ACP sur les axes 3 et 4")
+```
+
+
+## Projection des individus sur le plan factoriel et interprétation
+
+```{r}
+# Projection des individus pour l’axe 1 et 2
+
+couleurs = c("skyblue","orange","red")
+
+fviz_pca_ind(ACP1, 
+             axes = c(1,2), 
+             col.ind = "cos2",
+             gradient.cols = couleurs,
+             repel=TRUE,
+             title ="Projection des individus sur l'axe 1 et 2")
+
+
+# Projection des individus pour l’axe 1 et 3
+
+fviz_pca_ind(ACP1,
+             axes = c(1,3),
+             col.ind = "cos2",
+             gradient.cols = couleurs,
+             repel=TRUE,
+             title ="Projection des individus sur l'axe 1 et 3")
+
+
+# Projection des individus pour l’axe 1 et 4
+
+fviz_pca_ind(ACP1,
+             axes = c(1,4),
+             col.ind = "cos2",
+             gradient.cols = couleurs,
+             repel=TRUE,
+             title ="Projection des individus sur l'axe 1 et 4")
+```
+
+```{r}
+# Première variable latente
+
+# Classement des départements en fonction de natalite
+
+base |> 
+  dplyr::select(natalite) |> 
+  arrange(desc(natalite)) |> 
+  mutate(rang = row_number())
+
+
+# Classement des départements en fonction de mortalite
+
+base |> 
+  dplyr::select(mortalite) |> 
+  arrange(desc(mortalite)) |> 
+  mutate(rang = row_number())
+```
+
+```{r}
+# Deuxième variable latente
+
+# Classement des départements en fonction de la surface verte par habitant
+
+base |> 
+  dplyr::select(surface) |> 
+  arrange(desc(surface)) |> 
+  mutate(rang = row_number())
+
+
+# Classement des départements en fonction de l'espérance de vie
+
+base |> 
+  dplyr::select(esperance) |> 
+  arrange(desc(esperance)) |> 
+  mutate(rang = row_number())
+
+
+# Classement des départements en fonction du taux de chomage
+
+base |> 
+  dplyr::select(chomage) |> 
+  arrange(desc(chomage)) |> 
+  mutate(rang = row_number())
+
+
+# Classement des départements en fonction de la part des ménages possédant une voiture
+
+base |> 
+  dplyr::select(voiture) |> 
+  arrange(desc(voiture)) |> 
+  mutate(rang = row_number())
+```
+
+
+```{r}
+# Troisième variable latente
+
+# Classement des départements en fonction du PIB départemental
+
+base |> 
+  dplyr::select(pib) |> 
+  arrange(desc(pib)) |> 
+  mutate(rang = row_number())
+
+
+# Classement des départements en fonction du nombre d'habitants
+
+base |> 
+  dplyr::select(population) |> 
+  arrange(desc(population)) |> 
+  mutate(rang = row_number())
+```
+
+```{r}
+# Quatrième variable latente
+
+# Classement des départements en fonction du revenu moyen annuel
+
+base |> 
+  dplyr::select(revenu) |> 
+  arrange(desc(revenu)) |> 
+  mutate(rang = row_number())
+
+
+# Classement des départements en fonction du taux d'éducation (%)
+
+base |> 
+  dplyr::select(education) |> 
+  arrange(desc(education)) |> 
+  mutate(rang = row_number())
+```
+
+
+# III. Régression linéaire multiple
+
+## RLM avec variables explicatives
+
+```{r}
+reg0 <- (lm(revenu~1,data=base))
+
+reg<- lm(revenu ~ population + chomage + pib + esperance + natalite + mortalite +
+           education + voiture + social + surface + littoral + rurale + metropole,
+         data = base)
+
+summary(reg)
+```
+
+
+### 0. Stepwise pour trouvcer le meilleur modèle
+
+```{r}
+### méthode ascendante
+
+step(reg0, scope=list(lower=reg0, upper=reg), data=base, direction="forward")
+```
+
+```{r}
+### méthode descendante
+
+step(reg, data=base, direction="backward")
+```
+
+```{r}
+### méthode dans les 2 sens
+
+step(reg0, scope = list(lower=reg0,upper=reg), data=base, direction="both")
+```
+
+
+Nous sélectionnons le modèle avec le plus faible AIC.
+
+```{r}
+regf<- lm(revenu ~ mortalite + natalite + metropole + education,
+         data = base
+           )
+
+summary(regf)
+```
+
+
+### 1. Vérification de la normalité des résidus
+
+```{r}
+### graphique 2
+
+plot(regf, 2)
+```
+
+```{r}
+### test de Kolmogorov-Smirnov
+
+residus <- residuals(regf) 
+ks.test(residus, "pnorm", mean(residus), sd(residus))
+```
+
+p>=0,05 H0 non rejetée => Les résidus suivent une distribution normale.
+
+
+### 2. Vérification de la forme fonctionnelle utilisée
+
+Forme linéaire retenue pour le modèle estimé appropriée ?
+
+```{r}
+### graphique 3
+
+plot(regf, 3)
+```
+
+```{r}
+### test de Ramsey
+
+reset(regf) 
+```
+
+p>=0,05 H0 non rejetée
+
+On peut accepter au seuil de risque de 5% la forme fonctionnelle linéaire du modèle.
+
+
+### 3. Vérification de la multicolinéarité
+
+```{r}
+vif(regf)
+```
+
+Les VIF ajustés montrent des valeurs proches de 1 pour chaque variable. Il n'existe donc pas de problème de multicolinéarité entre les variables explicatives du modèle. Par conséquent, aucune des variables n'a besoin d'être supprimée.
+
+
+### 4. Vérification des observations influentes
+
+Existence de valeurs influençant les estimations via le graphique de la distance de Cook
+
+```{r}
+### graphique 4
+
+plot(regf, 4)
+```
+
+```{r}
+par(mfrow=c(1,1))
+plot(cooks.distance(regf),type="h")
+```
+
+Étant donné que la distance de Cook est nettement inférieure à 1, aucune observation n'exerce une grande influence sur les estimations des paramètres du modèle ou sur les prédictions. Il n'est donc pas nécessaire de supprimer des observations.
+
+
+### 5. Vérification de l'hypothèse d'homoscédasticité des résidus du modèle
+
+Hypothèse d’homoscédasticité des résidus (au seuil de risque de 5%) du modèle
+
+```{r}
+### graphique 1
+
+plot(regf, 1)
+```
+
+```{r}
+bptest(regf)
+```
+
+La p-value est largement supérieure à 0,05, l'hypothèse nulle n'est donc pas rejetée : la variance des résidus est supposée constante. Par conséquent, la méthode des MCO est à privilégiée.
+
+
+## RLM avec variables latentes
+
+```{r}
+# Variable latente 1 : dynamisme démographique
+latente1 <- ACP1$ind$coord[,1]
+
+# Variable latente 2 : qualité de vie
+latente2 <- ACP1$ind$coord[,2]
+
+# Variable latente 3 : concentration économique et démographique
+latente3 <- ACP1$ind$coord[,3]
+
+# Variable latente 4 : déséquilibre socio-économique
+latente4 <- ACP1$ind$coord[,4]
+```
+
+```{r}
+reglat0 <- (lm(revenu~1,data=base))
+
+reglat1 <- lm(revenu ~ latente1 + latente2 + latente3 + latente4 + littoral + rurale + metropole,
+         data = base)
+
+summary(reglat1)
+```
+
+
+### Stepwise pour trouver le meilleur modèle
+
+```{r}
+### méthode ascendante
+
+step(reglat0, scope=list(lower=reglat0, upper=reglat1), data=base, direction="forward")
+```
+
+```{r}
+### méthode descendante
+
+step(reglat1, data=base, direction="backward")
+```
+
+```{r}
+### méthode dans les 2 sens
+
+step(reglat0, scope = list(lower=reglat0,upper=reglat1), data=base, direction="both")
+```
+
+
+Nous sélectionnons le modèle avec le plus faible AIC.
+Les quatre méthodes sélectionnent les mêmes variables explicatives.
+
+```{r}
+reglat2<- lm(revenu ~ latente1 + latente2 + latente3 + latente4 + littoral,
+         data = base
+           )
+
+summary(reglat2)
+```
+
+
+
+
+
+
+
