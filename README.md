@@ -1,125 +1,117 @@
-# Analyse des disparités économiques entre départements français  
-*Étude économétrique sur les déterminants du revenu moyen annuel en France.*
+# Socioeconomic Disparities Across French Departments  
+*A data-driven econometric and statistical analysis of income determinants in France.*
 
 ---
 
 ## 📘 Overview
-Ce projet vise à **analyser les disparités économiques et sociales entre les départements français** à travers une étude économétrique du revenu moyen annuel.  
-Il a été réalisé dans le cadre du **Master 1 Économétrie et Statistiques, parcours Économétrie Appliquée**, sous la supervision de **Youssoufa Sy (Université de Nantes / CREM Rennes 1)**.
+This project conducts an in-depth **exploratory and econometric analysis of socioeconomic disparities** among French departments.  
+It was developed as part of the **Master’s program in Econometrics and Statistics (Applied Econometrics track)** at the University of Nantes.
 
 **Objectives**
-- Identifier les facteurs économiques, sociaux et territoriaux influençant le revenu moyen départemental  
-- Appliquer des méthodes d’analyse descriptive, d’ACP et de régression multiple  
-- Évaluer l’impact des variables explicatives sur les inégalités de revenu en France  
+- Analyze the determinants of **average annual income** across French departments  
+- Explore the **economic, demographic, and geographic factors** influencing disparities  
+- Apply **descriptive statistics, PCA**, and **multiple regression models** for interpretation  
+- Ensure methodological rigor, **reproducibility**, and **clarity** in applied econometric analysis  
 
 ---
 
 ## ⚙️ Features
-- Statistiques descriptives univariées et bivariées (tests de Wilcoxon, Khi-2, corrélations de Spearman)  
-- Analyse en Composantes Principales (ACP) pour réduction dimensionnelle  
-- Modélisation économétrique linéaire multiple  
-- Détection des valeurs atypiques (test de Rosner)  
-- Visualisations dynamiques sous R : histogrammes, boxplots, cercles de corrélation, cartes de chaleur  
+- Descriptive statistical analysis with visualization of quantitative and qualitative variables  
+- Principal Component Analysis (PCA) for dimensionality reduction and variable synthesis  
+- Multiple linear regression models for assessing factor influence  
+- Statistical testing (normality, Wilcoxon, Chi-squared)  
+- Automated generation of descriptive graphics in R (histograms, boxplots, correlation plots)  
 
 ---
 
 ## 🧰 Tech Stack
-**Langage :** R  
-**Bibliothèques principales :**  
-`tidyverse`, `FactoMineR`, `factoextra`, `corrplot`, `PerformanceAnalytics`, `car`, `lmtest`, `sjPlot`, `EnvStats`, `MASS`, `leaps`, `AER`, `gridExtra`.
+**Language:** R  
+**Libraries:** `tidyverse`, `openxlsx`, `FactoMineR`, `factoextra`, `corrplot`, `PerformanceAnalytics`, `sjPlot`, `gridExtra`, `EnvStats`, `AER`, `lmtest`  
 
 ---
 
 ## ⚙️ Installation
-Cloner le dépôt et ouvrir le script principal sous RStudio :
+Clone the repository and install required R libraries:
 
 ```bash
-git clone https://github.com/<your-username>/analyse-disparites-france.git
-cd analyse-disparites-france
-```
-
-Installer les dépendances nécessaires :
-```r
-install.packages(c("tidyverse","FactoMineR","factoextra","corrplot","PerformanceAnalytics",
-                   "car","lmtest","sjPlot","EnvStats","MASS","leaps","AER","gridExtra"))
-```
-
-Charger le script :
-```r
-source("script_analyse.R")
+git clone https://github.com/<your-username>/french-socioeconomic-analysis.git
+cd french-socioeconomic-analysis
+Rscript -e 'install.packages(c("tidyverse","openxlsx","FactoMineR","factoextra","corrplot","PerformanceAnalytics","sjPlot","gridExtra","EnvStats","AER","lmtest"))'
 ```
 
 ---
 
 ## 📚 Usage Example
+
 ```r
-# Chargement de la base
-base <- read.xlsx("data/french_departments_socioeconomic_data.xlsx", startRow = 2, colNames = TRUE)
+# Load dataset
+base <- read.xlsx("data/french_departments_socioeconomic_data.xlsx", startRow = 2, colNames = TRUE, rowNames = TRUE)
 
-# Analyse descriptive
-summary(base)
+# Perform PCA
+library(FactoMineR)
+ACP1 <- PCA(base[, 1:11], scale.unit = TRUE)
 
-# ACP
-ACP1 <- PCA(base[,quantis], scale.unit = TRUE, graph = TRUE)
-
-# Régression linéaire multiple
-modele <- lm(revenu ~ pib + population + education + surface, data = base)
-summary(modele)
+# Visualize correlation circle
+library(factoextra)
+fviz_pca_var(ACP1, col.var = "cos2", gradient.cols = c("skyblue", "red"), repel = TRUE)
 ```
 
-Des exemples complets sont disponibles dans le dossier `notebooks/`.
+Additional examples and visual outputs are available in the `notebooks/` and `reports/` directories.
 
 ---
 
 ## 📂 Project Structure
+
 ```
-analyse-disparites-france/
+french-socioeconomic-analysis/
 │
-├── data/                        # Données socio-économiques départementales
-├── src/                         # Scripts R d’analyse
-│   ├── analyse_descriptive.R
-│   ├── acp.R
-│   └── regression_lineaire.R
-├── outputs/                     # Graphiques, résultats ACP et modèles
-├── notebooks/                   # Étapes exploratoires et analyses complémentaires
-├── requirements.R               # Bibliothèques à installer
+├── data/                     # Dataset of French departments
+├── src/                      # R scripts for analysis
+├── notebooks/                # R Markdown notebooks
+├── reports/                  # Final PDF and HTML outputs
+├── assets/                   # Figures and plots
+├── requirements.R            # List of required packages
 └── README.md
 ```
 
 ---
 
 ## 📊 Results
-Les résultats mettent en évidence :
-- L’importance du **PIB**, de la **population** et de la **surface verte par habitant** sur le revenu moyen.  
-- Un effet significatif de la **mortalité** et de la **présence d’une métropole**.  
-- Une **tension entre le taux d’éducation et le revenu**, suggérant un déséquilibre socio-économique entre territoires.
+The study identifies several key determinants of income disparities among French departments:
 
-![ACP projection](./assets/acp_correlation_circle.png)
+- **Economic variables** such as GDP and population size strongly influence average income.  
+- **Demographic indicators** (birth and death rates) define regional dynamism.  
+- **Environmental and educational factors** (green space per capita, education rate) have nuanced, sometimes counterintuitive effects.  
+- The **PCA** revealed four main components explaining 52% of the total variance, highlighting latent structures such as *demographic dynamism*, *quality of life*, *economic concentration*, and *socio-educational tension*.
+
+Example visualization:
+
+![Correlation Circle](./assets/pca_correlation_circle.png)
 
 ---
 
 ## 🧠 References
+For theoretical and methodological background:
 - Hyndman & Athanasopoulos, *Forecasting: Principles and Practice*  
 - Hamilton, *Time Series Analysis*  
 - Wooldridge, *Introductory Econometrics: A Modern Approach*  
-- Sy, Y. (2025). *Directives d’analyse de données et d’économétrie appliquée*【13†Webmail Etudiants __ Analyse des données et descriptive.pdf】  
+- Youssoufa Sy, *Économétrie avancée* (course materials, 2024–2025)  
 
 ---
 
 ## 📜 License
-Ce projet est diffusé sous licence **MIT**.  
-© 2025 Pierre Quintin de Kercadio & Florian Crochet.
+This project is released under the **MIT License**.  
+© 2025 Florian Crochet & Pierre Quintin de Kercadio
 
 ---
 
-## 👤 Authors
-**Pierre Quintin de Kercadio**  
+## 👤 Author
 **Florian Crochet**  
-*Étudiants en Master 1 Économétrie et Statistiques – Université de Nantes*  
-📫 [LinkedIn](> À compléter) | [Email](> À compléter)
+*Master’s Student in Econometrics & Statistics — Applied Econometrics*  
+📫 [LinkedIn](> À compléter) | [Email](> À compléter) | [Portfolio](> À compléter)
 
 ---
 
 ## 💬 Acknowledgments
-Merci à **Youssoufa Sy**, enseignant-chercheur au CREM Rennes 1, pour son encadrement et ses conseils méthodologiques.  
-Remerciements également à la communauté R et aux auteurs des packages open-source utilisés dans ce projet.
+Supervised and guided by **Dr. Youssoufa Sy (CREM-Rennes 1, European Doctorate in Law and Economics)**.  
+Special thanks to the open-source R community and university collaborators.
