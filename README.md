@@ -1,42 +1,42 @@
-# Socioeconomic Disparities Across French Departments  
-*A data-driven econometric and statistical analysis of income determinants in France.*
+# Data Analysis of French Departments  
+*A statistical and econometric exploration of socioeconomic disparities across French departments.*
 
 ---
 
 ## 📘 Overview
-This project conducts an in-depth **exploratory and econometric analysis of socioeconomic disparities** among French departments.  
-It was developed as part of the **Master’s program in Econometrics and Statistics (Applied Econometrics track)** at the University of Nantes.
+This project analyzes **economic, social, and environmental factors** influencing the **average annual income** of French departments.  
+It was developed as part of the **Master 1 in Econometrics and Statistics (Applied Econometrics track)** at the University of Nantes.
 
 **Objectives**
-- Analyze the determinants of **average annual income** across French departments  
-- Explore the **economic, demographic, and geographic factors** influencing disparities  
-- Apply **descriptive statistics, PCA**, and **multiple regression models** for interpretation  
-- Ensure methodological rigor, **reproducibility**, and **clarity** in applied econometric analysis  
+- Study regional income disparities using socioeconomic and demographic indicators  
+- Identify the main variables affecting income distribution  
+- Apply descriptive statistics, Principal Component Analysis (PCA), and multiple linear regression  
+- Provide interpretable, reproducible, and visually supported results  
 
 ---
 
 ## ⚙️ Features
-- Descriptive statistical analysis with visualization of quantitative and qualitative variables  
-- Principal Component Analysis (PCA) for dimensionality reduction and variable synthesis  
-- Multiple linear regression models for assessing factor influence  
-- Statistical testing (normality, Wilcoxon, Chi-squared)  
-- Automated generation of descriptive graphics in R (histograms, boxplots, correlation plots)  
+- Comprehensive **descriptive statistics** (univariate, bivariate, multivariate)  
+- **Visualization** of distributions, correlations, and categorical dependencies  
+- **Normality and independence tests** (Shapiro–Wilk, Chi-squared, Wilcoxon–Mann–Whitney)  
+- **Principal Component Analysis (PCA)** with eigenvalue selection and correlation circles  
+- **Multiple linear regression** to quantify determinants of income disparities  
 
 ---
 
 ## 🧰 Tech Stack
 **Language:** R  
-**Libraries:** `tidyverse`, `openxlsx`, `FactoMineR`, `factoextra`, `corrplot`, `PerformanceAnalytics`, `sjPlot`, `gridExtra`, `EnvStats`, `AER`, `lmtest`  
+**Libraries:** tidyverse, FactoMineR, factoextra, corrplot, PerformanceAnalytics, sjPlot, lmtest, EnvStats, AER, MASS, car  
 
 ---
 
 ## ⚙️ Installation
-Clone the repository and install required R libraries:
+To run the project locally:
 
 ```bash
-git clone https://github.com/<your-username>/french-socioeconomic-analysis.git
-cd french-socioeconomic-analysis
-Rscript -e 'install.packages(c("tidyverse","openxlsx","FactoMineR","factoextra","corrplot","PerformanceAnalytics","sjPlot","gridExtra","EnvStats","AER","lmtest"))'
+git clone https://github.com/<your-username>/french-departments-data-analysis.git
+cd french-departments-data-analysis
+Rscript -e "install.packages(c('tidyverse','FactoMineR','factoextra','corrplot','PerformanceAnalytics','sjPlot','lmtest','EnvStats','AER','MASS','car','openxlsx','gridExtra','outliers','reshape2'))"
 ```
 
 ---
@@ -44,74 +44,82 @@ Rscript -e 'install.packages(c("tidyverse","openxlsx","FactoMineR","factoextra",
 ## 📚 Usage Example
 
 ```r
-# Load dataset
+# Load data
 base <- read.xlsx("data/french_departments_socioeconomic_data.xlsx", startRow = 2, colNames = TRUE, rowNames = TRUE)
 
-# Perform PCA
+# Run PCA
 library(FactoMineR)
-ACP1 <- PCA(base[, 1:11], scale.unit = TRUE)
+ACP1 <- PCA(base[, c("revenu", "population", "chomage", "pib", "esperance",
+                     "natalite", "mortalite", "education", "voiture", "social", "surface")],
+            scale.unit = TRUE, graph = FALSE)
 
-# Visualize correlation circle
+# Visualize results
 library(factoextra)
-fviz_pca_var(ACP1, col.var = "cos2", gradient.cols = c("skyblue", "red"), repel = TRUE)
+fviz_pca_var(ACP1, axes = c(1,2), col.var = "cos2", gradient.cols = c("skyblue", "red"))
 ```
-
-Additional examples and visual outputs are available in the `notebooks/` and `reports/` directories.
 
 ---
 
 ## 📂 Project Structure
 
 ```
-french-socioeconomic-analysis/
+data-analysis/
 │
-├── data/                     # Dataset of French departments
-├── src/                      # R scripts for analysis
-├── notebooks/                # R Markdown notebooks
-├── reports/                  # Final PDF and HTML outputs
-├── assets/                   # Figures and plots
-├── requirements.R            # List of required packages
+├── data/               # French departments socioeconomic dataset
+├── src/                # R scripts for analysis (code add.Rmd)
+├── outputs/            # Generated figures and tables
+├── report/             # Final report (PDF)
+├── requirements.R      # List of required packages
 └── README.md
 ```
 
 ---
 
 ## 📊 Results
-The study identifies several key determinants of income disparities among French departments:
+The analysis highlights key insights:
 
-- **Economic variables** such as GDP and population size strongly influence average income.  
-- **Demographic indicators** (birth and death rates) define regional dynamism.  
-- **Environmental and educational factors** (green space per capita, education rate) have nuanced, sometimes counterintuitive effects.  
-- The **PCA** revealed four main components explaining 52% of the total variance, highlighting latent structures such as *demographic dynamism*, *quality of life*, *economic concentration*, and *socio-educational tension*.
+- **PCA Results:** Four main components explain ~52% of total variance.  
+  - Axis 1: demographic dynamics (natality, mortality)  
+  - Axis 2: quality of life (surface, life expectancy, unemployment, car ownership)  
+  - Axis 3: economic concentration (GDP, population)  
+  - Axis 4: socioeconomic imbalance (income vs. education)
+
+- **Regression Findings:** GDP, population, and green surface per inhabitant significantly affect income; mortality and metropolitan presence are also key explanatory factors.
 
 Example visualization:
 
-![Correlation Circle](./assets/pca_correlation_circle.png)
+![PCA Correlation Circle](./assets/pca_correlation_circle.png)
 
 ---
 
 ## 🧠 References
-For theoretical and methodological background:
+For theoretical background and statistical methodology:
 - Hyndman & Athanasopoulos, *Forecasting: Principles and Practice*  
 - Hamilton, *Time Series Analysis*  
 - Wooldridge, *Introductory Econometrics: A Modern Approach*  
-- Youssoufa Sy, *Économétrie avancée* (course materials, 2024–2025)  
+- Youssoufa Sy (2025), *Course guidelines and evaluation criteria for data analysis report*, University of Nantes【13†Webmail Etudiants】  
 
 ---
 
 ## 📜 License
 This project is released under the **MIT License**.  
-© 2025 Florian Crochet & Pierre Quintin de Kercadio
+© 2025 Florian Crochet & Pierre Quintin de Kercadio  
 
 ---
 
-## 👤 Author
+## 👤 Authors
 **Florian Crochet**  
-*Master’s Student in Econometrics & Statistics — Applied Econometrics*  
-📫 [LinkedIn](> À compléter) | [Email](> À compléter) | [Portfolio](> À compléter)
+*Econometrics & Statistics Student – Applied Econometrics Track (University of Nantes)*  
+📫 > À compléter  
+
+**Pierre Quintin de Kercadio**  
+*Econometrics & Statistics Student – Applied Econometrics Track (University of Nantes)*  
+📫 > À compléter  
 
 ---
 
 ## 💬 Acknowledgments
-Supervised and guided by **Dr. Youssoufa Sy (CREM-Rennes 1, European Doctorate in Law and Economics)**.  
-Special thanks to the open-source R community and university collaborators.
+Special thanks to **Dr. Youssoufa Sy** (CREM–Rennes 1, EDLE program) for his academic guidance and methodological insights.  
+The authors also acknowledge the **open-source R community** for providing robust and reproducible statistical tools.
+
+---
