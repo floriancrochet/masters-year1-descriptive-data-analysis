@@ -1,6 +1,8 @@
 # Data Analysis of French Departments  
 *A statistical and econometric exploration of socioeconomic disparities across French departments.*
 
+[**Report (PDF – online)**](https://drive.google.com/file/d/1gsTslCKPU89YSfCskhBAV4VMomRVl0Cb/view?usp=drive_link)
+
 ---
 
 ## 📘 Overview
